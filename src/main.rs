@@ -42,6 +42,20 @@ fn main() -> Result<()> {
     if check_result.len() >= (1 as usize) {
         println!("Вы успешно авторизованы!");
 
+        let mut stmt1 = conn.prepare("SELECT * FROM users")?;
+        let checked_data1 = stmt1.query_map([], |row| {
+            Ok(AuthInfo {
+                login: row.get(0)?,
+                password: row.get(1)?,
+            })
+        })?;
+
+        println!("Все существующие аккаунты: ");
+
+        for name_result1 in checked_data1 {
+            println!("{:?}", name_result1.unwrap().login.replace("\n", ""))
+        }
+
         println!("Вы хотите зарегистрировать новую учетную запись / удалить текущую / изменить пароль?");
 
         let mut user_choice: String = "".to_string();
@@ -86,3 +100,5 @@ fn main() -> Result<()> {
 
     Ok(())
 }
+
+
