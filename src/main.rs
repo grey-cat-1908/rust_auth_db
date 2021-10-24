@@ -7,6 +7,14 @@ struct AuthInfo {
     password: String
 }
 
+#[derive(Debug)]
+struct AuthStats {
+    good_logins: i32,
+    bad_logins: i32
+}
+
+
+#[allow(unused_must_use)]
 fn main() -> Result<()> {
     let conn = Connection::open("auth.db")?;
 
@@ -15,6 +23,11 @@ fn main() -> Result<()> {
              login text primary key unique,
              password text not null
          )",
+        [],
+    )?;
+
+    conn.execute(
+        "create table if not exists stats (type text, good_logins integer, bad_logins integer)",
         [],
     )?;
 
@@ -41,6 +54,22 @@ fn main() -> Result<()> {
 
     if check_result.len() >= (1 as usize) {
         println!("Вы успешно авторизованы!");
+
+        conn.execute("UPDATE stats SET GoodLogins = GoodLogins + 1 WHERE type = 'logins'", []);
+
+        let mut stmt2 = conn.prepare("SELECT * FROM stats WHERE type = 'logins'")?;
+        let checked_data2 = stmt2.query_map([], |row| {
+            Ok(AuthStats {
+                good_logins: row.get(1)?,
+                bad_logins: row.get(2)?
+            })
+        })?;
+
+        for name_result2 in checked_data2 {
+            let converted_name = name_result2.unwrap();
+
+            println!("Обнаружена статистика по входам. Успешных: {:?}; Неуспешных: {:?}", converted_name.good_logins, converted_name.bad_logins)
+        }
 
         let mut stmt1 = conn.prepare("SELECT * FROM users")?;
         let checked_data1 = stmt1.query_map([], |row| {
@@ -95,6 +124,7 @@ fn main() -> Result<()> {
 
     }
     else {
+        conn.execute("UPDATE stats SET BadLogins = BadLogins + 1 WHERE type = 'logins'", []);
         println!("Неправильно введенные данные!")
     }
 
